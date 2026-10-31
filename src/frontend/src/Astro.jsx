@@ -20,6 +20,7 @@ const SUGGEST = {
     { label: "Which planet is most Earth-like?", text: "Which planet in this system is most Earth-like, and why?" },
     { label: "Tell me about this star", text: "What kind of star is this, and how does it compare to the Sun?" },
     { label: "Which are in the habitable zone?", text: "Which planets here are in the habitable zone?" },
+    { label: "What's the green ring?", text: "What does the green habitable zone ring mean?" },
   ],
 };
 

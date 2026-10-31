@@ -78,12 +78,14 @@ client = OpenAI(
 )
 MODEL = os.getenv("LLM_MODEL", "llama3.2")
 
+from glossary import glossary_hits, definitions_block, DEFINE_Q
+
 # ---------- the astronomer ----------
 
 BASE_RULES = """You are Astro, a friendly virtual astronomer inside a 3D exoplanet explorer. Your audience is curious non-experts.
 
 STRICT RULES
-1. Use ONLY the FACTS provided below. Never add numbers, names or details that are not in them.
+1. Use ONLY the FACTS (and DEFINITIONS, if given) provided below. Never add numbers, names or details that are not in them.
 2. Answer every part the facts DO cover first. Only for the parts they don't cover, say "NASA's data doesn't tell us" that part. Never answer with only a refusal when some facts are relevant.
 3. Never say life is likely, promising or possible. Never speculate about atmosphere, oceans, surface, weather or aliens. The honest conclusion is that the data cannot show whether life exists.
 4. Equilibrium temperature is not surface temperature. ESI measures similarity to Earth in size, density and temperature; it is not a chance of life.
@@ -118,6 +120,11 @@ MODE_PROMPTS = {
     "system": (
         "Task: the user is looking at a whole planetary system. Answer using the facts for its planets. "
         "Write planet names exactly as in the facts."
+    ),
+    "define": (
+        "Task: the user is asking what a term or concept means. Explain it in 2 or 3 simple sentences using the "
+        "DEFINITIONS. If the planet or star facts show how it applies to what the user is looking at, add one sentence "
+        "about that using those facts. The definitions answer the question, so do not say NASA's data doesn't tell us."
     ),
     "free": (
         "Task: answer the user's question using only the facts. "
@@ -247,10 +254,14 @@ def build_messages(message, names, history, mode):
         if p["pl_name"] not in seen and len(records) < 10:
             records.append(p)
             seen.add(p["pl_name"])
+    # "what is an M-type star?", "what does the green ring mean?": answer from the vetted glossary
+    hits = glossary_hits(message) if DEFINE_Q.search(message) else []
+    if hits and mode == "free" and not GLOBAL_Q.search(message):
+        mode = "define"
     # a typed question about one planet that matches a quick question uses that question's template
     if mode == "free" and len(names) == 1 and not GLOBAL_Q.search(message) and not mentioned(message):
         mode = intent_of(message)
-    if not names or (mode == "free" and GLOBAL_Q.search(message)):
+    if mode != "define" and (not names or (mode == "free" and GLOBAL_Q.search(message))):
         mode = "explore"  # a catalogue-wide question: give the model the catalogue facts too
     elif len(names) > 1 and mode == "free":
         mode = "system"
@@ -262,6 +273,8 @@ def build_messages(message, names, history, mode):
         context += cat_names
     if records:
         parts.append(facts_block(records))
+    if hits:
+        parts.append(definitions_block(hits))
     facts = "\n\n".join(parts) or "No planet selected."
     system = f"{BASE_RULES}\n\n{MODE_PROMPTS.get(mode, MODE_PROMPTS['free'])}\n\nFACTS\n{facts}"
     msgs = [{"role": "system", "content": system}]
