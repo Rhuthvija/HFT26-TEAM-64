@@ -5,7 +5,7 @@
 
 ![SOLICE star map](docs/screenshots/star-map.png)
 
-**🎥 Demo video:** _add link here_ · **Track:** AI-Powered 3D Exoplanet Explorer
+**🎥 Demo video:** [_solice_ ](https://drive.google.com/file/d/1GXIxRR4t5rIo1QmkLTKjBJje3ouywjrs/view?usp=sharing)· **Track:** AI-Powered 3D Exoplanet Explorer
 
 ---
 
