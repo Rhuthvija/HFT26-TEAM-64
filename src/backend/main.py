@@ -84,7 +84,7 @@ BASE_RULES = """You are Astro, a friendly virtual astronomer inside a 3D exoplan
 
 STRICT RULES
 1. Use ONLY the FACTS provided below. Never add numbers, names or details that are not in them.
-2. If something is not in the facts, say "NASA's data doesn't tell us that."
+2. Answer every part the facts DO cover first. Only for the parts they don't cover, say "NASA's data doesn't tell us" that part. Never answer with only a refusal when some facts are relevant.
 3. Never say life is likely, promising or possible. Never speculate about atmosphere, oceans, surface, weather or aliens. The honest conclusion is that the data cannot show whether life exists.
 4. Equilibrium temperature is not surface temperature. ESI measures similarity to Earth in size, density and temperature; it is not a chance of life.
 5. Describe stars exactly as the facts do. Never call a cool red dwarf hot.
@@ -189,6 +189,21 @@ def one_line(p):
     return f"- {p['pl_name']}: " + ", ".join(bits)
 
 
+# typed questions that mean the same as the quick-question buttons get the same, more reliable template
+INTENTS = [
+    ("life", re.compile(r"\b(life|alive|living|live (on|there|here)|habitable|habitability|aliens?|inhabit\w*|survive|liquid water|water)\b", re.I)),
+    ("earth", re.compile(r"\b(compare[sd]?|comparison|versus|vs\.?|like earth|similar to earth|earth-like|than earth|to earth)\b", re.I)),
+    ("special", re.compile(r"\b(special|interesting|unique|unusual|notable|cool|stand out|stands out|fun fact)\b", re.I)),
+]
+
+
+def intent_of(message):
+    for mode, rx in INTENTS:
+        if rx.search(message):
+            return mode
+    return "free"
+
+
 # questions about the catalogue as a whole, asked from any view ("closest", "most Earth-like", "how many"...)
 GLOBAL_Q = re.compile(
     r"\b(closest|nearest|farthest|furthest|most earth|earth-like|earthlike|habitable worlds|best|top|largest|biggest|"
@@ -232,6 +247,9 @@ def build_messages(message, names, history, mode):
         if p["pl_name"] not in seen and len(records) < 10:
             records.append(p)
             seen.add(p["pl_name"])
+    # a typed question about one planet that matches a quick question uses that question's template
+    if mode == "free" and len(names) == 1 and not GLOBAL_Q.search(message) and not mentioned(message):
+        mode = intent_of(message)
     if not names or (mode == "free" and GLOBAL_Q.search(message)):
         mode = "explore"  # a catalogue-wide question: give the model the catalogue facts too
     elif len(names) > 1 and mode == "free":
